@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RNG Power Simulator — Endgame Update</title>
+<style>
+:root{color-scheme:dark;--bg:#090d18;--panel:#151d31;--line:#344263;--text:#f4f5ff;--muted:#aeb9da;--gold:#ffd56b;--cyan:#71e7ff;--purple:#a88aff;--green:#70efad;--red:#ff8495}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#1a2850 0,#090d18 58%);color:var(--text);font-family:system-ui,Arial,sans-serif}header{text-align:center;padding:24px 12px;background:linear-gradient(120deg,#171e43,#38205b);border-bottom:1px solid #52618b}h1{font-size:clamp(25px,5vw,42px);margin:0}header p{color:#c3c8ed;margin-bottom:0}main{max-width:1150px;margin:auto;padding:14px}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat,.panel{background:linear-gradient(145deg,#182139,#101626);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}.stat small{color:var(--muted)}.stat strong{display:block;font-size:clamp(16px,3vw,25px);overflow-wrap:anywhere;margin-top:6px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:10px}.card{background:#0e1527;border:1px solid #303e60;padding:13px;border-radius:11px;margin:8px 0}.card h3{margin:0 0 5px}.muted{color:var(--muted);font-size:13px;line-height:1.5}button{border:0;border-radius:9px;padding:11px 13px;background:#354879;color:white;font-weight:750;cursor:pointer;margin:3px;min-height:40px}button:hover{filter:brightness(1.15)}button:disabled{opacity:.38;cursor:not-allowed}.purple{background:#7745d6}.gold{background:#b98418;color:white}.red{background:#9c344c}.green{background:#147954}.cyan{color:var(--cyan);font-weight:bold}.rarity{color:var(--gold);font-weight:bold;text-transform:uppercase;font-size:12px;letter-spacing:1px}.avatar{font-size:45px}.name{font-size:22px;font-weight:850;margin:4px}.tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:15px}.tab{background:#202c48}.tab.active{background:#7650ce}.page{display:none}.page.active{display:block}#latest{text-align:center;min-height:165px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(#293d67,#11182a);border-radius:13px;padding:15px;margin:10px 0}.pill{display:inline-block;background:#293654;border-radius:20px;padding:4px 8px;font-size:11px;margin:2px}.log{max-height:330px;overflow:auto}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #344263}th{color:var(--muted)}.slot{border:1px dashed #66759c;border-radius:10px;padding:12px;background:#10182b;margin:7px 0}.slot.equipped{border:1px solid #a88aff;background:#241d3d}.slot strong{display:block;margin-bottom:4px}.notice{background:#25203b;border:1px solid #59477f;padding:12px;border-radius:10px;margin:8px 0}.success{color:var(--green)}.failure{color:var(--red)}footer{text-align:center;color:#9ba7c9;font-size:12px;padding:18px}
+@media(min-width:700px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header><h1>🎰 RNG POWER SIMULATOR</h1><p>ROLL → PPS → FUSIONS → WILLOWS → MAHORAGA → EYAD</p></header>
+<main>
+<div class="stats">
+ <div class="stat"><small>⚡ POWER</small><strong id="power">0</strong></div>
+ <div class="stat"><small>💠 TOTAL PPS</small><strong id="pps">0</strong></div>
+ <div class="stat"><small>🎲 ROLLS</small><strong id="rolls">0</strong></div>
+ <div class="stat"><small>✨ TOTAL MULTIPLIER</small><strong id="mult">1×</strong></div>
+</div>
+<div class="grid">
+<section class="panel">
+<h2>🎲 Character Roll</h2>
+<div id="latest"><div class="avatar">🎲</div><div class="name">Ready to roll?</div><div class="muted">Higher rarities are extremely rare.</div></div>
+<button class="purple" onclick="rollCharacter()">ROLL ONCE</button>
+<button id="autoBtn" onclick="toggleAuto()">AUTO ROLL: OFF</button>
+<button class="gold" id="runBtn" onclick="run60()">RUN 60 SECONDS</button>
+<button class="red" onclick="stopAuto()">STOP</button>
+<p class="muted">PPS generates Power once per second. Character PPS is added to your total PPS. Mutations multiply a roll.</p>
+</section>
+<section class="panel">
+<h2>🏆 Best Roll</h2><div id="best">No rolls yet.</div>
+<h3>📊 Session</h3><div id="session" class="muted">Power earned: 0<br>Mutations: 0<br>Fusions: 0</div>
+<button class="red" onclick="resetGame()">RESET EVERYTHING</button>
+</section>
+</div>
+<section class="panel">
+<div class="tabs">
+<button class="tab active" onclick="openTab('history',this)">History</button>
+<button class="tab" onclick="openTab('shop',this)">Power Shop</button>
+<button class="tab" onclick="openTab('fusion',this)">Fusions & Rebirth</button>
+<button class="tab" onclick="openTab('willows',this)">Willows</button>
+<button class="tab" onclick="openTab('mahoraga',this)">Mahoraga & Eyad</button>
+<button class="tab" onclick="openTab('index',this)">Index</button>
+</div>
+<div id="history" class="page active">
+<h2>📜 Roll History</h2><div id="historyList" class="log muted">Your rolls will appear here.</div>
+<h3>Top 3 rolls</h3><div id="top3">No rolls yet.</div>
+</div>
+<div id="shop" class="page">
+<h2>🛒 Power Shop</h2><p class="muted">Packs open instantly when bought. Higher rarity packs cost much more.</p><div id="shopList" class="grid"></div>
+</div>
+<div id="fusion" class="page">
+<h2>♻️ Rebirth</h2>
+<div class="card"><p>Every complete 1 trillion Power converts into 1 Fusion Roll. Rebirth resets Power and PPS to zero.</p><p>Fusion Rolls available: <b id="fusionCount">0</b></p><button class="gold" onclick="rebirth()">REBIRTH FOR FUSION ROLLS</button><div id="rebirthMsg" class="muted">Reach 1 trillion Power.</div></div>
+<h2>🔥 Fusion Rolls — HARD MODE</h2>
+<div class="notice">Fusion characters are much harder to get. Every fusion roll costs <b>100 trillion Power</b>. The fusion roll button spends Power directly; rebirth Fusion Rolls are separate currency for buying Willows.</div>
+<button class="purple" onclick="buyFusionRoll()">BUY 1 FUSION ROLL — 100T POWER</button>
+<button onclick="buyFusionRoll(10)">BUY 10 FUSION ROLLS — 1Qa POWER</button>
+<p class="muted">Fusion rolls are rare-quality weighted. Most results are basic fusions; the best fusions have extremely tiny odds. The normal fusion roll is still available below.</p>
+<h3>💎 Fusion Pack Shop</h3><p class="muted">Normal fusion rolls remain available above for 100T Power each. Mutation packs cost much more and open instantly. Each pack guarantees a fusion and the listed number of distinct mutations.</p><div class="grid">
+<div class="card"><h3>✨ 1-MUTATION FUSION PACK</h3><p>One random mutation guaranteed.</p><p>Price: <b>1 Qi Power (10¹⁸)</b></p><button onclick="buyFusionPack(1)">BUY & OPEN — 1 Qi</button></div>
+<div class="card"><h3>🔥 2-MUTATION FUSION PACK</h3><p>Two different mutations guaranteed.</p><p>Price: <b>1 Sx Power (10²¹)</b></p><button onclick="buyFusionPack(2)">BUY & OPEN — 1 Sx</button></div>
+<div class="card"><h3>🌌 5-MUTATION FUSION PACK</h3><p>Five different mutations guaranteed.</p><p>Price: <b>1 Oc Power (10²⁷)</b></p><button onclick="buyFusionPack(5)">BUY & OPEN — 1 Oc</button></div>
+<div class="card"><h3>🌈 ALL-MUTATIONS FUSION PACK</h3><p>Guarantees all 10 mutations: Shiny, Flame, Frozen, Charged, Corrupted, Prismatic, Cosmic, Praying Hands, Stone Face, and Absolute Cinema.</p><p>Combined mutation multiplier: <b>×21,000,000,000 (21 billion)</b></p><p>Price: <b>1 No Power (10³⁰)</b></p><button class="gold" onclick="buyFusionPack(10)">BUY & OPEN — 1 No</button></div></div>
+<div id="fusionResult" class="card">No fusion rolled yet.</div><h3>Fusion collection</h3><div id="fusionList" class="log muted">No fusions yet.</div>
+</div>
+<div id="willows" class="page">
+<h2>🌳 Willow Garden</h2>
+<div class="notice">Buying a Willow only adds it to your inventory. It does <b>not</b> activate automatically. Equip one in a slot, then press USE when you want to take the 50/50 gamble. Failed wishes reset progress but preserve all Willow items and slot upgrades.</div>
+<p>Fusion Rolls: <b id="willowFR">0</b> · Willow inventory: <b id="willowInventory">0</b> · Slots unlocked: <b id="slotsUnlocked">1/3</b></p>
+<h3>Buy named Willows</h3><div id="willowShop" class="grid"></div>
+<h3>Your three Willow slots</h3><div id="willowSlots"></div>
+<h3>Willow inventory</h3><div id="willowItems" class="log muted">No Willows owned yet.</div>
+</div>
+<div id="mahoraga" class="page">
+<h2>🛞 Mahoraga & ✨ Eyad</h2>
+<div class="notice">Unlock Mahoraga at <b>1,000,000,000 Willows</b>. Mahoraga has five slots. Each equipped Mahoraga grants ×1,000,000. Reach <b>1,000,000,000,000 Mahoragas</b> to unlock Eyad, which grants ×1 decillion (10³³).</div>
+<div class="card"><h3>Mahoraga</h3><p>Owned: <b id="mahoragaOwned">0</b> / 1,000,000,000 Willows needed to unlock</p><button class="gold" id="unlockMahoraga" onclick="unlockMahoraga()">UNLOCK MAHORAGA SYSTEM</button><p class="muted" id="mahoragaStatus">Not unlocked.</p><div id="mahoragaSlots"></div><button class="purple" onclick="buyMahoraga()">BUY MAHORAGA (1,000,000 WILLLOWS)</button></div>
+<div class="card"><h3>✨ Eyad</h3><p>Mahoragas owned: <b id="eyadProgress">0</b> / 1,000,000,000,000</p><button class="gold" onclick="unlockEyad()">UNLOCK EYAD</button><p id="eyadStatus" class="muted">Eyad grants ×1 decillion once unlocked.</p></div>
+</div>
+<div id="index" class="page">
+<h2>Character Index</h2><div class="tablewrap"><table><thead><tr><th>Rarity</th><th>Character</th><th>Base PPS</th></tr></thead><tbody id="charTable"></tbody></table></div>
+<h3>Mutations</h3><div id="mutationTable"></div>
+<h3>Fusion odds</h3><div id="fusionOdds" class="muted"></div>
+</div>
+</section>
+</main>
+<footer>Standalone prototype · BigInt handles very large integer multipliers · Save stays in this browser</footer>
+<script>
+"use strict";
+const T=1000000000000n, Q=1000000000000000000000000n, DECILLION=10n**33n;
+const $=id=>document.getElementById(id);
+const characters=[
+["Common","Noob","🧑",1000n],["Common","Guest","👤",2500n],["Common","MrBeast","💸",2000n],
+["Uncommon","Flair","🌪️",7500n],["Uncommon","Rift","🌀",15000n],
+["Rare","Nyx","🌙",40000n],["Rare","Voltaris","⚡",75000n],
+["Epic","Aether","🔮",250000n],["Epic","LeBron James","🏀",500000n],["Epic","Guest 666","😈",1000000n],["Epic","Trollface","😏",2000000n],["Epic","Chill Guy","🐕",5000000n],
+["Legendary","Elon Musk","🚀",10000000n],["Legendary","Skibidi Toilet","🚽",15000000n],
+["Mythicality","Rickroll","🎵",50000000n],["Mythicality","Gigachad","💪",75000000n],["Mythicality","Cristiano Ronaldo","⚽",100000000000n],["Mythicality","McDonald","🍟",500000000000n],
+["Secret","La Peace","🕊️",300000000n],["Ascendency","Technoblade","🐷",99999999999999n],
+["Dictator","Kylian Mbappé","⚽",100000000000000n],["Infinity","Infinity Elder God of Power","♾️",-1000000000000n],
+["Transcendency","Transcendency","🌌",1000000000000000n],["Transascendency","Transascendency","🪐",1000000000000000000n]
+];
+const rarities=[
+["Common",40],["Uncommon",30],["Rare",20],["Epic",9],["Legendary",.8],
+["Mythicality",.15],["Secret",.04],["Ascendency",.009],["Dictator",.0009],
+["Infinity",.0001],["Transcendency",.00001],["Transascendency",.000001]
+];
+const mutations=[["Shiny",2n],["Flame",3n],["Frozen",4n],["Charged",5n],["Corrupted",7n],["Prismatic",10n],["Cosmic",20n],["Praying Hands",25n],["Stone Face",50n],["Absolute Cinema",100n]];
+// Fusion odds sum to 100%. Only a small share of rolls are high-tier.
+const fusionPool=[
+["Fusion Noob","🧑‍🤝‍🧑",100000000000000n,"Common Fusion",70],
+["Trollroll","😈🎵",200000000000000n,"Rare Fusion",20],
+["Gigachad Ronaldo","💪⚽",1000000000000000n,"Epic Fusion",8],
+["Technopeace","🐷🕊️",10000000000000000n,"Legendary Fusion",1.8],
+["McMusk","🍟🚀",100000000000000000n,"Mythicality Fusion",.19],
+["Infinityblade","♾️🐷",1000000000000000000n,"Infinity Fusion",.0099],
+["Football God","⚽🌌",100000000000000000000n,"Transcendency Fusion",.0001],
+["Absolute Infinity","♾️🪐",1000000000000000000000n,"Transascendency Fusion",.000001]
+];
+const packs=[
+{n:"Rare Pack",d:"Guaranteed Rare character",c:100000,r:"Rare"},
+{n:"Epic Pack",d:"Guaranteed Epic character",c:10000000,r:"Epic"},
+{n:"Legendary Pack",d:"Guaranteed Legendary character",c:1000000000,r:"Legendary"},
+{n:"Mythicality Pack",d:"Guaranteed Mythicality character",c:100000000000,r:"Mythicality"},
+{n:"Secret Pack",d:"Guaranteed Secret character",c:10000000000000n,r:"Secret"},
+{n:"Ascendency Pack",d:"Guaranteed Ascendency character",c:1000000000000000n,r:"Ascendency"},
+{n:"Dictator Pack",d:"Guaranteed Dictator character",c:100000000000000000n,r:"Dictator"},
+{n:"Infinity Pack",d:"Guaranteed Infinity character",c:1000000000000000000000n,r:"Infinity"},
+{n:"Transcendency Pack",d:"Guaranteed Transcendency character",c:10n**27n,r:"Transcendency"},
+{n:"Transascendency Pack",d:"Guaranteed Transascendency character",c:10n**30n,r:"Transascendency"},
+{n:"Shiny Pack",d:"Guaranteed Shiny mutation",c:50000,m:"Shiny"},
+{n:"Cosmic Pack",d:"Guaranteed Cosmic mutation",c:1000000000000n,m:"Cosmic"},
+{n:"Absolute Cinema Pack",d:"Guaranteed Absolute Cinema",c:100000000000000000n,m:"Absolute Cinema"}
+];
+const willowTypes=[
+{name:"One Wish Willow",emoji:"🌳",cost:100000,slot:1,desc:"The original 50/50 wish."},
+{name:"Eternal Wish Willow",emoji:"🌲",cost:1000000,slot:2,desc:"A more valuable Willow for slot 2."},
+{name:"Celestial Wish Willow",emoji:"🌌",cost:10000000,slot:3,desc:"The rarest standard Willow, for slot 3."}
+];
+const S={power:0n,pps:0n,mult:1n,rolls:0,earned:0n,mutationCount:0,collection:0,fusionRolls:0,willows:0,willowInventory:[],equipped:[null,null,null],unlockedSlots:1,mahoraga:0n,mahoragaUnlocked:false,mahoragaSlots:[false,false,false,false,false],eyad:false,best:null,history:[],fusionHistory:[],auto:false,autoTimer:null,runTimer:null,runLeft:0};
+function fmt(n){n=BigInt(n);let neg=n<0n?"-":"";let s=(n<0n?-n:n).toString();if(s.length<=6)return neg+s;let units=["","K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc","Ud","Dd","Td","Qad","Qid","Sxd","Spd","Ocd","Nod","Vg","Uvg","Dvg","Tvg","Qavg","Qivg","Sxvg","Spvg","Ocvg","Novg","Tg"];let g=Math.floor((s.length-1)/3);if(g>=units.length)return neg+s.slice(0,3)+"e"+(s.length-1);let lead=s.slice(0,s.length-g*3);return neg+lead+(s.length-g*3<s.length?"."+s.slice(lead.length,lead.length+2):"")+units[g]}
+function exact(n){return BigInt(n).toLocaleString("en-US")}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function totalMult(){let m=S.mult;for(const id of S.equipped)if(id!==null){const w=S.willowInventory.find(x=>x.id===id);if(w)m*=w.multiplier}for(const active of S.mahoragaSlots)if(active)m*=1000000n;if(S.eyad)m*=DECILLION;return m}
+function weighted(pool,weightIndex){let total=pool.reduce((a,x)=>a+x[weightIndex],0),r=Math.random()*total;for(const x of pool){r-=x[weightIndex];if(r<=0)return x}return pool[0]}
+function randomMutations(){let found=[];for(const m of mutations)if(Math.random()<.025)found.push(m);return found}
+function showRoll(r){$("latest").innerHTML=`<div class="avatar">${r.emoji}</div><div class="rarity">${esc(r.rarity)}</div><div class="name">${esc(r.name)}</div><div class="cyan">+${fmt(r.gain)} PPS</div><div class="muted">${r.muts.join(" · ")||"No mutation"} · Roll multiplier ${fmt(r.rollMult)}×</div>`}
+function addHistory(r){S.history.unshift(r);S.history=S.history.slice(0,150);if(!S.best||r.gain>S.best.gain)S.best=r;showRoll(r)}
+function rollCharacter(forcedRarity=null,forcedMutation=null){let pool=forcedRarity?characters.filter(c=>c[0]===forcedRarity):characters;if(!pool.length){alert("No character for that rarity.");return}let c;if(forcedRarity)c=pool[Math.floor(Math.random()*pool.length)];else{let rarity=weighted(rarities,1)[0];let tier=characters.filter(x=>x[0]===rarity);c=tier[Math.floor(Math.random()*tier.length)]}let muts=forcedMutation?[mutations.find(m=>m[0]===forcedMutation)].filter(Boolean):randomMutations();let mm=muts.reduce((a,m)=>a*m[1],1n);let gain=c[3]*mm*totalMult();S.pps+=gain;S.rolls++;S.collection++;S.mutationCount+=muts.length;addHistory({name:c[1],emoji:c[2],rarity:c[0],gain,muts:muts.map(m=>m[0]),rollMult:mm*totalMult()});render()}
+function rollFusionOne(mutationCount=0){const f=weighted(fusionPool,4);let muts=[];if(mutationCount>=mutations.length){muts=[...mutations]}else if(mutationCount>0){const bag=[...mutations];while(muts.length<mutationCount&&bag.length){const i=Math.floor(Math.random()*bag.length);muts.push(bag.splice(i,1)[0])}}const mm=muts.reduce((a,m)=>a*m[1],1n);const gain=f[2]*mm*totalMult();S.pps+=gain;S.rolls++;S.collection++;S.mutationCount+=muts.length;let r={name:f[0],emoji:f[1],rarity:f[3],gain,muts:muts.length?muts.map(m=>m[0]):["FUSION"],rollMult:mm*totalMult()};addHistory(r);S.fusionHistory.unshift(r);S.fusionHistory=S.fusionHistory.slice(0,100);$("fusionResult").innerHTML=`<b>${f[1]} ${esc(f[0])}</b><br>${f[3]}<br><span class="cyan">+${fmt(gain)} PPS</span><br><span class="muted">${muts.length?muts.length+" MUTATIONS: "+muts.map(m=>m[0]).join(" · "):"Normal fusion roll"}</span>`}
+function buyFusionRoll(n=1){let cost=100000000000000n*BigInt(n);if(S.power<cost){alert("Not enough Power. Cost: "+exact(cost));return}S.power-=cost;for(let i=0;i<n;i++)rollFusionOne(false);render()}
+function buyFusionPack(mutationCount=10){const prices={1:10n**18n,2:10n**21n,5:10n**27n,10:10n**30n};const cost=prices[mutationCount];if(!cost){alert("Invalid fusion pack.");return}if(S.power<cost){alert("Not enough Power! This pack costs "+exact(cost)+" Power.");return}S.power-=cost;rollFusionOne(mutationCount);render()}
+function rebirth(){if(S.power<T){alert("You need at least 1 trillion Power.");return}let count=S.power/T;if(count>BigInt(Number.MAX_SAFE_INTEGER)){alert("Too many rolls to credit safely in one rebirth. Spend Power down or try again with a smaller amount.");return}S.fusionRolls+=Number(count);S.power=0n;S.pps=0n;S.rolls=0;S.earned=0n;S.mutationCount=0;S.collection=0;S.best=null;S.history=[];S.fusionHistory=[];$("rebirthMsg").textContent="Rebirth complete! You received "+count.toLocaleString()+" Fusion Rolls. Power and PPS are now 0.";render()}
+function buyWillow(i){const w=willowTypes[i];if(S.fusionRolls<w.cost){alert("Not enough Fusion Rolls. Cost: "+exact(w.cost));return}if(S.willowInventory.length>=1000000){alert("Inventory cap reached.");return}S.fusionRolls-=w.cost;S.willows++;S.willowInventory.push({id:Date.now()+Math.random(),name:w.name,emoji:w.emoji,multiplier:1n,kind:i});render()}
+function equipWillow(id,slot){if(slot>=S.unlockedSlots){alert("Unlock that slot first.");return}if(!S.willowInventory.some(w=>w.id===id)){alert("Willow not found.");return}S.equipped[slot]=id;render()}
+function unlockSlot(slot){if(slot<S.unlockedSlots)return;const costs=[0,500000,5000000];let cost=costs[slot];if(S.fusionRolls<cost){alert("Slot "+(slot+1)+" costs "+exact(cost)+" Fusion Rolls.");return}S.fusionRolls-=cost;S.unlockedSlots=slot+1;render()}
+function useWillow(slot){const id=S.equipped[slot];const w=S.willowInventory.find(x=>x.id===id);if(!w){alert("Equip a Willow in this slot first.");return}if(!confirm("Use "+w.name+"? 50% chance to multiply your multiplier by 100; 50% chance to reset progress. The Willow itself will be kept."))return;if(Math.random()<.5){S.mult*=100n;$("wishResult").textContent="🌟 "+w.name+" succeeded! Permanent multiplier is now "+fmt(S.mult)+"×."}else{S.power=0n;S.pps=0n;S.mult=1n;S.rolls=0;S.earned=0n;S.mutationCount=0;S.collection=0;S.best=null;S.history=[];S.fusionHistory=[];S.fusionRolls=0;$("wishResult").textContent="💥 "+w.name+" failed! Progress reset, but every Willow remains in your inventory.";$("latest").innerHTML='<div class="avatar">🌳</div><div class="name">Wish failed</div><div class="muted">Your Willows survived.</div>'}render()}
+function unlockMahoraga(){if(S.willows<1000000000){alert("You need 1 billion Willows.");return}S.mahoragaUnlocked=true;render()}
+function buyMahoraga(){if(!S.mahoragaUnlocked){alert("Unlock Mahoraga first.");return}const cost=1000000;if(S.willows<cost){alert("Buying Mahoraga costs 1,000,000 Willows.");return}S.willows-=cost;S.mahoraga+=1n;render()}
+function toggleMahoragaSlot(i){if(!S.mahoragaUnlocked)return;if(!S.mahoragaSlots[i]){if(S.mahoraga<1n){alert("You need at least one Mahoraga per active slot.");return}S.mahoragaSlots[i]=true}else S.mahoragaSlots[i]=false;render()}
+function unlockEyad(){if(S.mahoraga<1000000000000n){alert("You need 1 trillion Mahoragas.");return}S.eyad=true;render()}
+function stopAuto(){S.auto=false;clearInterval(S.autoTimer);S.autoTimer=null;$("autoBtn").textContent="AUTO ROLL: OFF";if(S.runTimer){clearInterval(S.runTimer);S.runTimer=null}$("runBtn").textContent="RUN 60 SECONDS"}
+function toggleAuto(){S.auto=!S.auto;$("autoBtn").textContent="AUTO ROLL: "+(S.auto?"ON":"OFF");if(S.auto)S.autoTimer=setInterval(()=>rollCharacter(),1000);else{clearInterval(S.autoTimer);S.autoTimer=null}}
+function run60(){stopAuto();let left=60;$("runBtn").textContent="RUNNING: 60s";rollCharacter();S.runTimer=setInterval(()=>{rollCharacter();left--;$("runBtn").textContent="RUNNING: "+left+"s";if(left<=0){clearInterval(S.runTimer);S.runTimer=null;$("runBtn").textContent="RUN 60 SECONDS"}},1000)}
+function resetGame(){if(!confirm("Reset all progress, including Willows, Mahoraga and Eyad?"))return;stopAuto();S.power=0n;S.pps=0n;S.mult=1n;S.rolls=0;S.earned=0n;S.mutationCount=0;S.collection=0;S.fusionRolls=0;S.willows=0;S.willowInventory=[];S.equipped=[null,null,null];S.unlockedSlots=1;S.mahoraga=0n;S.mahoragaUnlocked=false;S.mahoragaSlots=[false,false,false,false,false];S.eyad=false;S.best=null;S.history=[];S.fusionHistory=[];render()}
+function openTab(id,b){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");b.classList.add("active")}
+function render(){
+$("power").textContent=fmt(S.power);$("pps").textContent=fmt(S.pps);$("rolls").textContent=S.rolls.toLocaleString();$("mult").textContent=fmt(totalMult())+"×";
+$("fusionCount").textContent=S.fusionRolls.toLocaleString();$("willowFR").textContent=S.fusionRolls.toLocaleString();$("willowInventory").textContent=S.willowInventory.length.toLocaleString();$("slotsUnlocked").textContent=S.unlockedSlots+"/3";$("mahoragaOwned").textContent=fmt(S.mahoraga);$("eyadProgress").textContent=fmt(S.mahoraga);
+$("session").innerHTML=`Power earned: ${fmt(S.earned)}<br>Characters collected: ${S.collection}<br>Mutations rolled: ${S.mutationCount}<br>Fusions rolled: ${S.fusionHistory.length}<br>Willows owned: ${S.willows.toLocaleString()}<br>Mahoragas: ${fmt(S.mahoraga)}<br>Eyad: ${S.eyad?"Unlocked":"Locked"}`;
+$("best").innerHTML=S.best?`<div class="card"><b>${S.best.emoji} ${esc(S.best.name)}</b><br>${fmt(S.best.gain)} PPS</div>`:"No rolls yet!";
+$("historyList").innerHTML=S.history.length?S.history.map(r=>`<div class="card">${r.emoji} <b>${esc(r.name)}</b> <span class="pill">${esc(r.rarity)}</span><br><span class="cyan">+${fmt(r.gain)} PPS</span><br><span class="muted">${r.muts.join(", ")||"No mutation"}</span></div>`).join(""):"Your rolls will appear here.";
+const top=[...S.history].sort((a,b)=>a.gain>b.gain?-1:a.gain<b.gain?1:0).slice(0,3);$("top3").innerHTML=top.length?top.map((r,i)=>`<div class="card">#${i+1} ${r.emoji} <b>${esc(r.name)}</b> — ${fmt(r.gain)} PPS</div>`).join(""):"No rolls yet.";
+$("fusionList").innerHTML=S.fusionHistory.length?S.fusionHistory.map(r=>`<div class="card">${r.emoji} <b>${esc(r.name)}</b><br>${r.rarity} · +${fmt(r.gain)} PPS</div>`).join(""):"No fusions yet.";
+$("willowItems").innerHTML=S.willowInventory.length?S.willowInventory.map(w=>`<div class="card">${w.emoji} <b>${esc(w.name)}</b> <button onclick="equipWillow(${w.id},0)">Equip Slot 1</button> <button onclick="equipWillow(${w.id},1)" ${S.unlockedSlots<2?"disabled":""}>Equip Slot 2</button> <button onclick="equipWillow(${w.id},2)" ${S.unlockedSlots<3?"disabled":""}>Equip Slot 3</button></div>`).join(""):"No Willows owned yet.";
+$("willowSlots").innerHTML=[0,1,2].map(i=>{let w=S.willowInventory.find(x=>x.id===S.equipped[i]);let locked=i>=S.unlockedSlots;let cost=[0,500000,5000000][i];return `<div class="slot ${w?"equipped":""}"><strong>Slot ${i+1}: ${locked?"LOCKED":w?esc(w.name):"Empty"}</strong><div class="muted">${locked?"Unlock cost: "+exact(cost)+" Fusion Rolls":w?"Ready to use manually.":"Equip a Willow from your inventory."}</div>${locked?`<button onclick="unlockSlot(${i})">UNLOCK SLOT</button>`:w?`<button class="gold" onclick="useWillow(${i})">USE WILLOW</button><button onclick="S.equipped[${i}]=null;render()">UNEQUIP</button>`:""}</div>`}).join("");
+$("willowShop").innerHTML=willowTypes.map((w,i)=>`<div class="card"><h3>${w.emoji} ${w.name}</h3><p class="muted">${w.desc}</p><p>Cost: <b>${exact(w.cost)} Fusion Rolls</b></p><button onclick="buyWillow(${i})">BUY WILLOW</button></div>`).join("");
+$("mahoragaStatus").textContent=S.mahoragaUnlocked?"Mahoraga system unlocked. Owned: "+fmt(S.mahoraga):"Not unlocked. Collect 1 billion Willows.";
+$("unlockMahoraga").disabled=S.mahoragaUnlocked;$("unlockMahoraga").textContent=S.mahoragaUnlocked?"MAHORAGA UNLOCKED":"UNLOCK MAHORAGA SYSTEM";
+$("mahoragaSlots").innerHTML=S.mahoragaUnlocked?[0,1,2,3,4].map(i=>`<div class="slot ${S.mahoragaSlots[i]?"equipped":""}"><strong>Mahoraga Slot ${i+1}</strong><div class="muted">Multiplier: ×1,000,000</div><button onclick="toggleMahoragaSlot(${i})">${S.mahoragaSlots[i]?"UNEQUIP":"EQUIP MAHORAGA"}</button></div>`).join(""):"<p class='muted'>Unlock the system to access five slots.</p>";
+$("eyadStatus").textContent=S.eyad?"EYAD UNLOCKED — ×"+fmt(DECILLION)+" multiplier active.":"Eyad grants ×1 decillion once unlocked.";
+$("mutationTable").innerHTML=mutations.map(m=>`<span class="pill">${m[0]} ×${m[1]}</span>`).join("");
+$("fusionOdds").innerHTML=fusionPool.map(f=>`${f[0]}: ${f[4]}%`).join("<br>");
+}
+function init(){
+$("shopList").innerHTML=packs.map((p,i)=>`<div class="card"><h3>${esc(p.n)}</h3><p class="muted">${esc(p.d)}</p><p>Cost: <b>${exact(p.c)} Power</b></p><button onclick="buyPack(${i})">BUY & OPEN</button></div>`).join("");
+$("charTable").innerHTML=characters.map(c=>`<tr><td>${esc(c[0])}</td><td>${c[2]} ${esc(c[1])}</td><td>${exact(c[3])}</td></tr>`).join("");
+$("mutationTable").innerHTML=mutations.map(m=>`<span class="pill">${m[0]} ×${m[1]}</span>`).join("");
+render();
+}
+function buyPack(i){let p=packs[i];if(S.power<BigInt(p.c)){alert("Not enough Power! Cost: "+exact(p.c));return}S.power-=BigInt(p.c);rollCharacter(p.r||null,p.m||null);render()}
+setInterval(()=>{const gain=S.pps*totalMult();S.power+=gain;S.earned+=gain;render()},1000);
+init();
+</script>
+</body>
+</html>
